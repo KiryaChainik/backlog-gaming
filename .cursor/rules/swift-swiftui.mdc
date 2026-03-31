@@ -1,0 +1,25 @@
+---
+description: Swift 6, SwiftUI, concurrency, a11y для iOS-клиента
+globs: "**/*.swift"
+alwaysApply: false
+---
+
+# Swift / SwiftUI
+
+## Язык и concurrency
+
+- Предпочитай **structured concurrency** (`async`/`await`); отмена через `Task`/`task` модификаторы — осмысленная, без fire-and-forget там, где нужен lifecycle.
+- **@MainActor** для UI-состояния и обновлений View; не тащи тяжёлую работу на main thread.
+- Ошибки: **явные типы** на границах; не проглатывай `try?` без обоснования.
+
+## SwiftUI
+
+- Разделяй **View** и подготовку данных; избегай огромных `body` — выноси подвиджеты.
+- Списки и коллекции: стабильные `id`, осторожно с лишними перерисовками.
+- **Accessibility:** `Label`, hints, min tap targets по возможности; поддерживай Dynamic Type.
+- **Локализация:** пользовательские строки через `LocalizedStringKey` / каталоги, без хардкода для UI.
+
+## Качество
+
+- Не оставляй отладочный мусор; для логов — `os_log` / `Logger` по соглашениям проекта.
+- Подозрение на retain cycles — weak/unowned осознанно; `[weak self]` в замыканиях с долгим жизненным циклом.

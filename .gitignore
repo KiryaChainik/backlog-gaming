@@ -1,0 +1,40 @@
+# Xcode / Swift
+DerivedData/
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+*.xcuserdatad
+xcuserdata/
+
+# Swift Package Manager
+.build/
+.swiftpm/configuration/registries.json
+.swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
+Packages/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Fastlane (если появится)
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# CocoaPods (если появится)
+Pods/
+
+# Carthage (если появится)
+Carthage/Build/
+
+# Accio (если появится)
+Dependencies/
+.accio/
+
+# Окружение / секреты
+*.mobileprovision
+*.p12
+.env
+.env.*

@@ -1,0 +1,14 @@
+---
+description: Platform, безопасность данных, Privacy Manifest, сеть ATS для iOS
+globs: "**/PrivacyInfo.xcprivacy,**/Info.plist,**/*.entitlements"
+alwaysApply: false
+---
+
+# Платформа, privacy, релиз
+
+- **Privacy Manifest (`PrivacyInfo.xcprivacy`):** отражай реальное использование API и причину; не копируй шаблоны слепо — сверяй с кодом.
+- **Keychain / чувствительные данные:** минимальный доступ, без логирования секретов.
+- **ATS / сеть:** не ослабляй `NSAllowsArbitraryLoads` без явной инженерной причины в задаче.
+- **Фоновые режимы и entitlement'ы:** только заявленное поведение; лишнее убирай.
+- **App Store / ревью:** давай **инженерный** чеклист (что проверить в проекте), не юридические советы.
+- **User Defaults / App Groups:** не хранить там секреты; осознанно выбирай место хранения.
