@@ -98,19 +98,6 @@ final class GameBacklogStore {
         entries.first { $0.id == id }
     }
 
-    func entries(for section: GameListSection, search: String) -> [GameEntry] {
-        let base: [GameEntry] = entries.filter { entry in
-            switch section {
-            case .playing: entry.status == .playing
-            case .wishlist: entry.status == .queued && entry.wishlist
-            case .queue: entry.status == .queued && !entry.wishlist
-            case .completed: entry.status == .completed
-            case .dropped: entry.status == .dropped
-            }
-        }
-        return filterBySearch(base, search: search)
-    }
-
     func entries(forKanban column: GameKanbanColumn, search: String) -> [GameEntry] {
         let base: [GameEntry] = entries.filter { entry in
             switch column {
@@ -170,10 +157,6 @@ final class GameBacklogStore {
         return entries.filter { $0.status == .playing }.count < Self.maxPlayingGames
     }
 
-    var nonEmptySections: [GameListSection] {
-        GameListSection.allCases.filter { !entries(for: $0, search: "").isEmpty }
-    }
-
     func counts() -> GameBacklogStats {
         GameBacklogStats(
             playing: entries.filter { $0.status == .playing }.count,
@@ -224,23 +207,7 @@ final class GameBacklogStore {
         save()
     }
 
-    func delete(at offsets: IndexSet, section: GameListSection, search: String) {
-        let group = entries(for: section, search: search)
-        let ids = offsets.compactMap { group[$0].id }
-        entries.removeAll { ids.contains($0.id) }
-        normalizeOrder()
-        save()
-    }
-
     // MARK: Задачи внутри игры
-
-    func moveTasks(gameId: GameEntry.ID, from source: IndexSet, to destination: Int) {
-        guard let gi = entries.firstIndex(where: { $0.id == gameId }) else { return }
-        var entry = entries[gi]
-        entry.tasks.backlogMove(fromOffsets: source, to: destination)
-        entries[gi] = entry
-        save()
-    }
 
     func addTask(gameId: GameEntry.ID, task: GameTask) {
         guard let gi = entries.firstIndex(where: { $0.id == gameId }) else { return }
@@ -485,10 +452,4 @@ struct GameBacklogStats: Equatable {
     var completed: Int
     var dropped: Int
     var total: Int
-}
-
-extension GameListSection: CaseIterable {
-    static var allCases: [GameListSection] {
-        [.playing, .wishlist, .queue, .completed, .dropped]
-    }
 }

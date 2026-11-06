@@ -42,7 +42,8 @@ Backlog_Gaming/
 │   ├── GameBacklogStore.swift       # @Observable store, CRUD
 │   └── GameBacklogPersistence.swift # JSON encode/decode
 └── Utilities/
-    └── Array+BacklogMove.swift      # Array helpers
+    ├── DateFormatting.swift         # Единый формат дат (ru)
+    └── TaskNoteFormatting.swift     # Markdown в заметках дел
 ```
 
 ## Контракт задачи

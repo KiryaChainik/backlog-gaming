@@ -39,13 +39,15 @@ struct GamesTabView: View {
 
     var body: some View {
         listContent
-            .navigationTitle("Игры")
+            .overlay(alignment: .bottomTrailing) {
+                // Кнопка живёт на корневом экране стека: при переходе в игру/статистику она уходит вместе с ним.
+                addButton
+            }
+            .navigationTitle("Бэклог")
             .searchable(text: $searchText, prompt: "Поиск")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    NavigationLink {
-                        BacklogStatsView()
-                    } label: {
+                    NavigationLink(value: BacklogRoute.stats) {
                         Image(systemName: "chart.bar")
                             .font(.title3.weight(.medium))
                     }
@@ -96,6 +98,11 @@ struct GamesTabView: View {
             .sheet(item: $taskSheet) { payload in
                 GameTaskEditorSheet(payload: payload)
                     .environment(store)
+            }
+            .navigationDestination(for: BacklogRoute.self) { route in
+                switch route {
+                case .stats: BacklogStatsView()
+                }
             }
             .navigationDestination(for: UUID.self) { id in
                 if let entry = store.entry(id: id) {
@@ -150,7 +157,24 @@ struct GamesTabView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
             }
+            .contentMargins(.bottom, 80, for: .scrollContent)
         }
+    }
+
+    private var addButton: some View {
+        Button {
+            showAddSheet = true
+        } label: {
+            Image(systemName: "plus")
+                .font(.title2.weight(.semibold))
+                .foregroundStyle(.white)
+                .frame(width: 54, height: 54)
+                .background(Circle().fill(columnAccent(.playing)))
+                .shadow(color: .black.opacity(0.18), radius: 8, y: 4)
+        }
+        .accessibilityLabel("Добавить игру")
+        .padding(.trailing, 20)
+        .padding(.bottom, 16)
     }
 
     // MARK: - Kanban column
@@ -284,14 +308,16 @@ struct GamesTabView: View {
                                 }
                             }
 
-                            if entry.platform != .unspecified {
+                            let isWishlist = entry.wishlist && entry.status == .queued
+                            if entry.platform != .unspecified || isWishlist {
                                 HStack(spacing: 6) {
-                                    Text(entry.platform.shortTitle)
-                                    if entry.wishlist && entry.status == .queued {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .font(.caption2)
-                                            .foregroundStyle(.purple)
-                                            .accessibilityLabel("Вишлист")
+                                    if entry.platform != .unspecified {
+                                        Text(entry.platform.shortTitle)
+                                    }
+                                    if isWishlist {
+                                        // Тот же значок и цвет, что у «Вишлиста» в статистике.
+                                        Label("Вишлист", systemImage: "star.fill")
+                                            .foregroundStyle(.orange)
                                     }
                                 }
                                 .font(.caption)
@@ -499,13 +525,7 @@ struct GamesTabView: View {
         }
     }
 
-    // MARK: - Context menu (empty — swipe only)
-
     // MARK: - Helpers
-
-    private func quickAddTrimmed(for gameId: UUID) -> String {
-        (quickAddByGame[gameId] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-    }
 
     private func quickAddBinding(for gameId: UUID) -> Binding<String> {
         Binding(
@@ -543,24 +563,6 @@ struct GamesTabView: View {
         case .backlog: "clock.circle.fill"
         case .completed: "checkmark.circle.fill"
         case .dropped: "xmark.circle.fill"
-        }
-    }
-
-    private func statusIcon(_ s: GameStatus) -> String {
-        switch s {
-        case .queued: "circle"
-        case .playing: "gamecontroller.fill"
-        case .completed: "checkmark.circle.fill"
-        case .dropped: "xmark.circle"
-        }
-    }
-
-    private func statusColor(_ s: GameStatus) -> Color {
-        switch s {
-        case .queued: .secondary
-        case .playing: .blue
-        case .completed: .green
-        case .dropped: .secondary
         }
     }
 
@@ -649,7 +651,10 @@ struct GamesTabView: View {
     }
 }
 
-// MARK: - Private extensions
+/// Маршруты стека «Бэклог», кроме экрана игры (он открывается по `UUID`).
+enum BacklogRoute: Hashable {
+    case stats
+}
 
 #Preview {
     @Previewable @State var path = NavigationPath()

@@ -11,6 +11,7 @@ struct GameDetailView: View {
     @State private var draft: GameEntry
     @State private var original: GameEntry
     @State private var taskSheet: TaskSheetPayload?
+    @State private var showDiscardConfirm = false
     private let entryId: UUID
 
     init(entry: GameEntry) {
@@ -154,10 +155,21 @@ struct GameDetailView: View {
             ToolbarItem(placement: .cancellationAction) {
                 if hasChanges {
                     Button("Отмена") {
-                        dismiss()
+                        showDiscardConfirm = true
                     }
                 }
             }
+        }
+        // Пока есть несохранённые правки, системная «Назад» (и свайп назад) скрыта —
+        // выйти можно только через «Сохранить» или «Отмена» с подтверждением.
+        .navigationBarBackButtonHidden(hasChanges)
+        .confirmationDialog(
+            "Отменить изменения?",
+            isPresented: $showDiscardConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Не сохранять", role: .destructive) { dismiss() }
+            Button("Продолжить редактирование", role: .cancel) {}
         }
         .onAppear {
             if let latest = store.entry(id: entryId) {

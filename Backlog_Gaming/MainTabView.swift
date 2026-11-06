@@ -39,11 +39,6 @@ struct MainTabView: View {
             .tag(2)
         }
         .tint(playingAccent)
-        .overlay(alignment: .bottomTrailing) {
-            if selectedTab == 0 {
-                addButton
-            }
-        }
         .alert(
             "Проблема с данными",
             isPresented: Binding(
@@ -58,20 +53,6 @@ struct MainTabView: View {
         }
     }
 
-    private var addButton: some View {
-        Button {
-            isAddingGame = true
-        } label: {
-            Image(systemName: "plus")
-                .font(.title2.weight(.semibold))
-                .foregroundStyle(.white)
-                .frame(width: 54, height: 54)
-                .background(Circle().fill(playingAccent))
-                .shadow(color: .black.opacity(0.18), radius: 8, y: 4)
-        }
-        .padding(.trailing, 20)
-        .padding(.bottom, 64)
-    }
 }
 
 struct SettingsPlaceholderView: View {
