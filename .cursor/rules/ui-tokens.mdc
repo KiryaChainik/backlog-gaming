@@ -1,0 +1,46 @@
+---
+description: Единые UI-токены для таймлайна, карточек и списков
+globs: "**/*.swift"
+alwaysApply: false
+---
+
+# UI Tokens (Backlog Gaming)
+
+## Purpose
+
+Использовать единые значения размеров/типографики, чтобы экраны выглядели цельно.
+
+## Timeline
+
+- `nodeSize`: 26
+- `stemWidth`: 3
+- `timelineLaneWidth`: 32
+- `timelineRowSpacing`: 10
+- `titleToMetaSpacing`: 2
+
+## Card / Container
+
+- `cardCornerRadius`: 10
+- `columnCornerRadius`: 14
+- `cardInnerPadding`: 10
+- `sectionVerticalSpacing`: 8
+
+## Typography hierarchy
+
+- Primary title: `.body`
+- Secondary/meta: `.caption` или `.caption2`
+- Column counters: `.subheadline.monospacedDigit()`
+
+## Do
+
+- Если меняешь токен на одном экране (например, `nodeSize`), синхронизируй все экраны с тем же паттерном (Kanban, Flow, Detail where applicable).
+- Новые токены добавляй только если это новый визуальный паттерн, а не локальная подгонка.
+
+## Don’t
+
+- Не вводи новые «почти такие же» значения без причины (например, 26 и 28 для одинакового узла).
+- Не переопределяй токены inline без необходимости.
+
+## Output
+
+- При изменении токенов указывать, какие экраны синхронизированы после правки.

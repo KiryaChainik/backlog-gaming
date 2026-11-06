@@ -1,0 +1,29 @@
+---
+description: Жёсткие запреты и проверенные паттерны SwiftUI (жесты, компоновка, concurrency)
+globs: "**/*.swift"
+alwaysApply: false
+---
+
+# SwiftUI Pitfalls
+
+## Purpose
+
+Избегать типовых поломок жестов, layout и Swift 6 actor-isolation.
+
+## Do
+
+- В `ScrollView` использовать `VStack/LazyVStack`, а не вложенный `List`.
+- Для tappable + draggable UI использовать `Button(.plain)` вместо `onTapGesture`.
+- Для действий в `VStack` применять `contextMenu` вместо `swipeActions`.
+- Ставить `draggable` на корневой контейнер элемента.
+- Для Swift 6 выносить `Codable` из `@MainActor` контекста или явно помечать nonisolated места.
+
+## Don’t
+
+- Не комбинировать `List` внутри `ScrollView`.
+- Не писать некорректные `frame`-overload’ы вроде `.frame(width: 36, minHeight: 44)`.
+- Не использовать `DisclosureGroup`, если он конфликтует с drag/tap в карточке.
+
+## Output
+
+- Если правки касались жестов/перетаскивания: явно подтверждать, что tap, long-press drag и context menu работают вместе.

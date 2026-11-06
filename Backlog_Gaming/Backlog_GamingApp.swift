@@ -9,9 +9,17 @@ import SwiftUI
 
 @main
 struct Backlog_GamingApp: App {
+    @State private var backlogStore = GameBacklogStore()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MainTabView()
+                .environment(backlogStore)
         }
     }
+}
+
+#Preview("Backlog Gaming") {
+    MainTabView()
+        .environment(GameBacklogStore())
 }
