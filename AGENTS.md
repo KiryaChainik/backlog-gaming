@@ -17,7 +17,7 @@
 | **Хранение** | JSON в `UserDefaults` через `GameBacklogStore` / `GameBacklogPersistence` (версионированный `FileEnvelope`). Декодирование терпимое (`decodeTolerant`, `LossyDecodableArray`); снимки в `Documents/Backups` при запуске и при ошибке чтения |
 | **Платформы** | Только iPhone / iPad (без macOS / visionOS) |
 | **Сеть** | Нет (полностью локальное приложение) |
-| **Тесты** | Пока нет; при появлении — XCTest, правило `ios-testing.mdc` вернётся |
+| **Тесты** | Swift Testing, таргет `Backlog_GamingTests` (⌘U): хранилище и миграции, защита данных, лимит «Играю», выборки «Потока». Store в тестах — только через `InMemoryBacklogStorage` |
 | **DI** | `GameBacklogStore(storage:)` — протокол `GameBacklogStorage` (`UserDefaultsBacklogStorage` / `InMemoryBacklogStorage`); `@Environment` для Store. Превью — только `GameBacklogStore.preview()` |
 | **UI-токены** | `Components/AppTheme.swift` (`UITokens`, `AppTheme`, `GameKanbanColumn.accent/symbolName`); общие `TaskTimelineNode`, `SymbolColorPicker` |
 

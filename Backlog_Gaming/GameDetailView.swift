@@ -194,6 +194,7 @@ struct GameDetailView: View {
                                 .foregroundStyle(t.isDone ? .green : .secondary)
                         }
                         .buttonStyle(.borderless)
+                        .accessibilityLabel(t.isDone ? "Отметить невыполненным" : "Отметить выполненным")
                     }
                     .contextMenu {
                         Button {

@@ -105,6 +105,16 @@ struct GameEntry: Identifiable, Codable, Equatable, Sendable {
         symbolName.isEmpty ? Self.defaultSymbol : symbolName
     }
 
+    /// Колонка канбана, в которой сейчас стоит игра.
+    var kanbanColumn: GameKanbanColumn {
+        switch status {
+        case .playing: .playing
+        case .queued: .backlog
+        case .completed: .completed
+        case .dropped: .dropped
+        }
+    }
+
     nonisolated init(
         id: UUID = UUID(),
         title: String,

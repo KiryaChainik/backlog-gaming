@@ -13,6 +13,8 @@ struct TaskTimelineNode: View {
     let isDone: Bool
     let isLast: Bool
 
+    @Environment(\.colorSchemeContrast) private var contrast
+
     var body: some View {
         ZStack(alignment: .top) {
             if !isLast {
@@ -32,7 +34,7 @@ struct TaskTimelineNode: View {
                 .frame(height: 14)
                 .offset(y: -12)
             Circle()
-                .fill(color.opacity(isDone ? 0.45 : 0.92))
+                .fill(AppTheme.iconFill(color, contrast: contrast).opacity(isDone ? 0.45 : 0.92))
                 .frame(width: UITokens.nodeSize, height: UITokens.nodeSize)
                 .overlay {
                     Image(systemName: symbolName)

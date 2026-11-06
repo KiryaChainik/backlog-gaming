@@ -8,6 +8,7 @@ import UIKit
 
 struct GamesTabView: View {
     @Environment(GameBacklogStore.self) private var store
+    @Environment(\.colorSchemeContrast) private var contrast
     @Binding var path: NavigationPath
     @Binding var showAddSheet: Bool
 
@@ -213,6 +214,18 @@ struct GamesTabView: View {
                                 } label: {
                                     Label("Редактировать", systemImage: "pencil")
                                 }
+                                Menu {
+                                    ForEach(GameKanbanColumn.allCases.filter { $0 != entry.kanbanColumn }) { target in
+                                        Button {
+                                            move(entry, to: target)
+                                        } label: {
+                                            Label(target.title, systemImage: target.symbolName)
+                                        }
+                                        .disabled(target == .playing && !store.canMoveToPlaying(id: entry.id))
+                                    }
+                                } label: {
+                                    Label("Переместить в…", systemImage: "arrow.right.square")
+                                }
                                 Button(role: .destructive) {
                                     gameToDelete = entry
                                 } label: {
@@ -286,7 +299,7 @@ struct GamesTabView: View {
                 } label: {
                     HStack(spacing: 10) {
                         Circle()
-                            .fill(GameTaskVisual.accentColor(at: entry.accentIndex).opacity(0.92))
+                            .fill(AppTheme.iconFill(GameTaskVisual.accentColor(at: entry.accentIndex), contrast: contrast).opacity(0.92))
                             .frame(width: 36, height: 36)
                             .overlay {
                                 Image(systemName: entry.displaySymbolName)
@@ -342,6 +355,7 @@ struct GamesTabView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityHint(expanded ? "Свернуть дела" : "Показать дела")
             }
 
             if expanded {
@@ -473,6 +487,7 @@ struct GamesTabView: View {
                     .foregroundStyle(task.isDone ? color : .secondary)
             }
             .buttonStyle(.borderless)
+            .accessibilityLabel(task.isDone ? "Отметить невыполненным" : "Отметить выполненным")
         }
         .contextMenu {
             Button {
@@ -503,6 +518,14 @@ struct GamesTabView: View {
     }
 
     // MARK: - Helpers
+
+    private func move(_ entry: GameEntry, to column: GameKanbanColumn) {
+        withAnimation(.snappy) {
+            if !store.moveEntryToKanban(id: entry.id, column: column) {
+                UINotificationFeedbackGenerator().notificationOccurred(.error)
+            }
+        }
+    }
 
     private func quickAddBinding(for gameId: UUID) -> Binding<String> {
         Binding(

@@ -23,6 +23,11 @@ enum AppTheme {
     static var accent: Color { GameKanbanColumn.playing.accent }
     /// Цвет вишлиста — одинаковый в карточках и статистике.
     static let wishlist: Color = .orange
+
+    /// Подложка под белую иконку. В режиме «Повышенный контраст» пастель затемняется, чтобы глиф читался.
+    static func iconFill(_ color: Color, contrast: ColorSchemeContrast) -> Color {
+        contrast == .increased ? color.mix(with: .black, by: 0.35) : color
+    }
 }
 
 extension GameKanbanColumn {

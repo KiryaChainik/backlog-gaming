@@ -135,7 +135,7 @@ private struct FlowTimelineRow: View {
                     .foregroundStyle(pair.task.isDone ? taskColor : .secondary)
             }
             .buttonStyle(.borderless)
-            .accessibilityLabel(pair.task.isDone ? "Отметить невыполненным" : "Выполнено")
+            .accessibilityLabel(pair.task.isDone ? "Отметить невыполненным" : "Отметить выполненным")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         // Full-row hit target so long-press isn’t ambiguous; must stay per-row (not one List cell for all tasks).
