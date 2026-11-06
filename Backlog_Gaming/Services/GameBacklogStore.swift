@@ -37,6 +37,22 @@ enum GameFlowCalendar {
         case .month: calendar.dateInterval(of: .month, for: date)
         }
     }
+
+    /// Интервал периода, сдвинутого на `offset` шагов от периода, содержащего `date` (0 — текущий).
+    nonisolated static func interval(
+        for grain: FlowPeriodGrain,
+        offset: Int,
+        from date: Date,
+        calendar: Calendar = .current
+    ) -> DateInterval? {
+        let component: Calendar.Component = switch grain {
+        case .day: .day
+        case .week: .weekOfYear
+        case .month: .month
+        }
+        guard let anchor = calendar.date(byAdding: component, value: offset, to: date) else { return nil }
+        return interval(for: grain, containing: anchor, calendar: calendar)
+    }
 }
 
 /// Проблема с хранилищем, о которой нужно сообщить пользователю (показывается алертом в `MainTabView`).
@@ -46,9 +62,11 @@ struct GameBacklogStorageIssue: Identifiable, Equatable, Sendable {
 }
 
 /// Секция потока для ручного порядка строк (`flowSortKey` задаётся только задачам из этой секции).
+/// `now` фиксирует «сегодня», с которым секция была построена, чтобы перестановка работала с тем же списком.
 enum FlowOrderingScope: Sendable {
-    case dated(DateInterval)
-    case overdue
+    case dated(DateInterval, now: Date)
+    case overdue(now: Date)
+    case upcoming(after: Date)
     case undated
 }
 
@@ -128,10 +146,7 @@ final class GameBacklogStore {
 
         switch column {
         case .playing:
-            if previous.status != .playing {
-                let playingCount = entries.filter { $0.status == .playing }.count
-                if playingCount >= Self.maxPlayingGames { return false }
-            }
+            guard canMoveToPlaying(id: id) else { return false }
             e.status = .playing
             e.wishlist = false
         case .backlog:
@@ -146,8 +161,13 @@ final class GameBacklogStore {
         }
 
         if e == previous { return true }
-        updateEntry(e)
-        return true
+        return updateEntry(e)
+    }
+
+    /// Можно ли перевести игру в «Играю», не превысив `maxPlayingGames` (уже играющая — всегда можно).
+    func canMoveToPlaying(id: GameEntry.ID) -> Bool {
+        if entry(id: id)?.status == .playing { return true }
+        return entries.filter { $0.status == .playing }.count < Self.maxPlayingGames
     }
 
     var nonEmptySections: [GameListSection] {
@@ -174,12 +194,17 @@ final class GameBacklogStore {
         save()
     }
 
-    func updateEntry(_ entry: GameEntry) {
-        guard let i = entries.firstIndex(where: { $0.id == entry.id }) else { return }
+    /// Сохраняет игру. `false` — изменение отклонено (нет записи, пустое название или занят лимит «Играю»).
+    @discardableResult
+    func updateEntry(_ entry: GameEntry) -> Bool {
+        guard let i = entries.firstIndex(where: { $0.id == entry.id }) else { return false }
         let previous = entries[i]
+        if entry.status == .playing, previous.status != .playing, !canMoveToPlaying(id: entry.id) {
+            return false
+        }
         var e = entry
         e.title = e.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !e.title.isEmpty else { return }
+        guard !e.title.isEmpty else { return false }
         if e.status != .queued { e.wishlist = false }
         if e.status == .completed {
             if previous.status != .completed {
@@ -191,6 +216,7 @@ final class GameBacklogStore {
         entries[i] = e
         normalizeOrder()
         save()
+        return true
     }
 
     func deleteEntry(id: GameEntry.ID) {
@@ -256,32 +282,44 @@ final class GameBacklogStore {
     }
 
     /// Вверх/вниз в списке текущей секции потока (между играми), а не только внутри `tasks` одной игры.
+    /// Двигаем только в пределах одного календарного дня: порядок дней задаётся датой, а не ручной сортировкой.
     func flowMoveTaskUp(gameId: GameEntry.ID, taskId: GameTask.ID, scope: FlowOrderingScope) {
-        var pairs = flowPairs(for: scope)
-        guard let i = pairs.firstIndex(where: { $0.game.id == gameId && $0.task.id == taskId }),
-              i > 0 else { return }
-        pairs.swapAt(i, i - 1)
-        applyFlowOrdering(pairs)
-        save()
+        flowMoveTask(gameId: gameId, taskId: taskId, scope: scope, by: -1)
     }
 
     func flowMoveTaskDown(gameId: GameEntry.ID, taskId: GameTask.ID, scope: FlowOrderingScope) {
+        flowMoveTask(gameId: gameId, taskId: taskId, scope: scope, by: 1)
+    }
+
+    /// Строки потока стоят в одном «дне» (оба без даты или даты в один календарный день) — их можно менять местами.
+    static func sameFlowDay(_ a: GameTask, _ b: GameTask, calendar: Calendar = .current) -> Bool {
+        switch (a.dueDate, b.dueDate) {
+        case (nil, nil): true
+        case let (da?, db?): calendar.isDate(da, inSameDayAs: db)
+        default: false
+        }
+    }
+
+    private func flowMoveTask(gameId: GameEntry.ID, taskId: GameTask.ID, scope: FlowOrderingScope, by step: Int) {
         var pairs = flowPairs(for: scope)
-        guard let i = pairs.firstIndex(where: { $0.game.id == gameId && $0.task.id == taskId }),
-              i < pairs.count - 1 else { return }
-        pairs.swapAt(i, i + 1)
+        guard let i = pairs.firstIndex(where: { $0.game.id == gameId && $0.task.id == taskId }) else { return }
+        let j = i + step
+        guard pairs.indices.contains(j), Self.sameFlowDay(pairs[i].task, pairs[j].task) else { return }
+        pairs.swapAt(i, j)
         applyFlowOrdering(pairs)
         save()
     }
 
     private func flowPairs(for scope: FlowOrderingScope) -> [(game: GameEntry, task: GameTask)] {
         switch scope {
-        case .dated(let interval):
-            openTasks(withDueDateIn: interval)
-        case .overdue:
-            openOverdueTasks()
+        case let .dated(interval, now):
+            flowTasks(in: interval, now: now)
+        case let .overdue(now):
+            overdueTasks(now: now)
+        case let .upcoming(after):
+            upcomingTasks(after: after)
         case .undated:
-            openUndatedTasks()
+            undatedOpenTasks()
         }
     }
 
@@ -312,18 +350,48 @@ final class GameBacklogStore {
         save()
     }
 
-    /// Дела с датой в интервале (по моменту `dueDate`), включая выполненные.
-    func openTasks(withDueDateIn interval: DateInterval) -> [(game: GameEntry, task: GameTask)] {
-        var out: [(game: GameEntry, task: GameTask)] = []
-        for g in entries {
-            for t in g.tasks {
-                if let d = t.dueDate, interval.contains(d) {
-                    out.append((game: g, task: t))
-                }
-            }
+    // MARK: Поток — выборки
+
+    /// Дела периода `[start, end)`, включая выполненные (как журнал периода).
+    /// Открытые дела за прошедшие дни сюда не попадают — они в «Просрочено», чтобы не дублироваться.
+    func flowTasks(in interval: DateInterval, now: Date = Date()) -> [(game: GameEntry, task: GameTask)] {
+        let todayStart = Calendar.current.startOfDay(for: now)
+        return flowPairs { t in
+            guard let d = t.dueDate, d >= interval.start, d < interval.end else { return false }
+            return t.isDone || d >= todayStart
         }
+    }
+
+    /// Открытые дела со сроком раньше сегодняшнего дня.
+    func overdueTasks(now: Date = Date()) -> [(game: GameEntry, task: GameTask)] {
+        let todayStart = Calendar.current.startOfDay(for: now)
+        return flowPairs { t in
+            guard !t.isDone, let d = t.dueDate else { return false }
+            return d < todayStart
+        }
+    }
+
+    /// Открытые дела со сроком не раньше `date` (обычно — конец текущего периода): блок «Скоро».
+    func upcomingTasks(after date: Date) -> [(game: GameEntry, task: GameTask)] {
+        flowPairs { t in
+            guard !t.isDone, let d = t.dueDate else { return false }
+            return d >= date
+        }
+    }
+
+    /// Открытые дела без даты.
+    func undatedOpenTasks() -> [(game: GameEntry, task: GameTask)] {
+        flowPairs { !$0.isDone && $0.dueDate == nil }
+    }
+
+    /// Все пары (игра, дело) под условием, в едином порядке потока:
+    /// календарный день → ручной `flowSortKey` → время → название игры → порядок дела в игре.
+    private func flowPairs(where include: (GameTask) -> Bool) -> [(game: GameEntry, task: GameTask)] {
         let cal = Calendar.current
-        out.sort { a, b in
+        let pairs = entries.flatMap { g in
+            g.tasks.filter(include).map { (game: g, task: $0) }
+        }
+        return pairs.sorted { a, b in
             // Same calendar day → respect manual flow order; raw Date would block reorder for «сегодня» without time.
             let dayA = a.task.dueDate.map { cal.startOfDay(for: $0) } ?? Date.distantFuture
             let dayB = b.task.dueDate.map { cal.startOfDay(for: $0) } ?? Date.distantFuture
@@ -342,59 +410,6 @@ final class GameBacklogStore {
                   let ib = b.game.tasks.firstIndex(where: { $0.id == b.task.id }) else {
                 return false
             }
-            return ia < ib
-        }
-        return out
-    }
-
-    /// Просроченные дела (dueDate < начало сегодняшнего дня), включая выполненные.
-    func openOverdueTasks() -> [(game: GameEntry, task: GameTask)] {
-        let todayStart = Calendar.current.startOfDay(for: Date())
-        var out: [(game: GameEntry, task: GameTask)] = []
-        for g in entries {
-            for t in g.tasks {
-                if let d = t.dueDate, d < todayStart {
-                    out.append((game: g, task: t))
-                }
-            }
-        }
-        let cal = Calendar.current
-        out.sort { a, b in
-            let dayA = a.task.dueDate.map { cal.startOfDay(for: $0) } ?? Date.distantFuture
-            let dayB = b.task.dueDate.map { cal.startOfDay(for: $0) } ?? Date.distantFuture
-            if dayA != dayB { return dayA < dayB }
-            if a.task.flowSortKey != b.task.flowSortKey {
-                return a.task.flowSortKey < b.task.flowSortKey
-            }
-            let da = a.task.dueDate ?? Date.distantFuture
-            let db = b.task.dueDate ?? Date.distantFuture
-            if da != db { return da < db }
-            let titleOrder = a.game.title.localizedCaseInsensitiveCompare(b.game.title)
-            if titleOrder != .orderedSame {
-                return titleOrder == .orderedAscending
-            }
-            guard let ia = a.game.tasks.firstIndex(where: { $0.id == a.task.id }),
-                  let ib = b.game.tasks.firstIndex(where: { $0.id == b.task.id }) else {
-                return false
-            }
-            return ia < ib
-        }
-        return out
-    }
-
-    /// Дела без даты (включая выполненные) — для блока «без даты» на вкладке потока.
-    func openUndatedTasks() -> [(game: GameEntry, task: GameTask)] {
-        entries.flatMap { g in
-            g.tasks.filter { $0.dueDate == nil }.map { (game: g, task: $0) }
-        }
-        .sorted { a, b in
-            if a.task.flowSortKey != b.task.flowSortKey {
-                return a.task.flowSortKey < b.task.flowSortKey
-            }
-            let c = a.game.title.localizedCaseInsensitiveCompare(b.game.title)
-            if c != .orderedSame { return c == .orderedAscending }
-            guard let ia = a.game.tasks.firstIndex(where: { $0.id == a.task.id }),
-                  let ib = b.game.tasks.firstIndex(where: { $0.id == b.task.id }) else { return false }
             return ia < ib
         }
     }

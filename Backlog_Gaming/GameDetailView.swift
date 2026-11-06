@@ -29,6 +29,17 @@ struct GameDetailView: View {
             || draft.note != original.note
     }
 
+    /// Пользователь выбрал «Играю», а все слоты заняты другими играми.
+    private var playingLimitReached: Bool {
+        draft.status == .playing && !store.canMoveToPlaying(id: entryId)
+    }
+
+    private var canSave: Bool {
+        hasChanges
+            && !playingLimitReached
+            && !draft.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     var body: some View {
         Form {
             Section("Название") {
@@ -36,11 +47,18 @@ struct GameDetailView: View {
                     .textInputAutocapitalization(.sentences)
             }
 
-            Section("Статус") {
+            Section {
                 Picker("Статус", selection: $draft.status) {
                     ForEach(GameStatus.allCases, id: \.self) { s in
                         Text(s.shortTitle).tag(s)
                     }
+                }
+            } header: {
+                Text("Статус")
+            } footer: {
+                if playingLimitReached {
+                    Text("В «Играю» уже \(GameBacklogStore.maxPlayingGames) игр. Освободи слот, чтобы сохранить этот статус.")
+                        .foregroundStyle(.orange)
                 }
             }
 
@@ -128,11 +146,10 @@ struct GameDetailView: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Сохранить") {
-                    saveDraft()
-                    dismiss()
+                    if saveDraft() { dismiss() }
                 }
                 .bold()
-                .disabled(!hasChanges)
+                .disabled(!canSave)
             }
             ToolbarItem(placement: .cancellationAction) {
                 if hasChanges {
@@ -219,12 +236,13 @@ struct GameDetailView: View {
         }
     }
 
-    private func saveDraft() {
+    /// `false` — Store отклонил изменение (например, занят лимит «Играю»); экран не закрываем.
+    private func saveDraft() -> Bool {
         var toSave = draft
         if let latestTasks = store.entry(id: entryId)?.tasks {
             toSave.tasks = latestTasks
         }
-        store.updateEntry(toSave)
+        return store.updateEntry(toSave)
     }
 }
 

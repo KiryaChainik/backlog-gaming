@@ -5,9 +5,19 @@
 
 import SwiftUI
 
+/// Как показывать дату в строке потока (зависит от блока и масштаба периода).
+enum FlowRowDateStyle {
+    /// Дата понятна из заголовка (режим «День») или её нет.
+    case hidden
+    /// «понедельник, 3 ноя» — для недели.
+    case weekdayDayMonth
+    /// «3 ноя» (с годом, если не текущий) — для месяца, просроченных и будущих дел.
+    case dayMonth
+}
+
 struct FlowTimelineList: View {
     let pairs: [(game: GameEntry, task: GameTask)]
-    let grain: FlowPeriodGrain
+    let dateStyle: FlowRowDateStyle
     let orderingScope: FlowOrderingScope
     var emphasizeUndated: Bool = false
     var onSelect: (UUID, UUID) -> Void
@@ -19,14 +29,21 @@ struct FlowTimelineList: View {
             ForEach(Array(pairs.enumerated()), id: \.element.task.id) { index, pair in
                 FlowTimelineRow(
                     pair: pair,
-                    grain: grain,
+                    dateStyle: dateStyle,
                     emphasizeUndated: emphasizeUndated,
-                    listIndex: index,
-                    listCount: pairs.count,
+                    // Ручной порядок — только внутри одного дня (порядок дней задаёт дата).
+                    canMoveUp: index > 0
+                        && GameBacklogStore.sameFlowDay(pairs[index - 1].task, pair.task),
+                    canMoveDown: index < pairs.count - 1
+                        && GameBacklogStore.sameFlowDay(pair.task, pairs[index + 1].task),
                     orderingScope: orderingScope,
                     isLast: index == pairs.count - 1,
                     onSelect: { onSelect(pair.game.id, pair.task.id) },
-                    onToggle: { store.toggleTaskDone(gameId: pair.game.id, taskId: pair.task.id) }
+                    onToggle: {
+                        withAnimation(.snappy) {
+                            store.toggleTaskDone(gameId: pair.game.id, taskId: pair.task.id)
+                        }
+                    }
                 )
             }
         }
@@ -40,10 +57,10 @@ private struct FlowTimelineRow: View {
     @Environment(GameBacklogStore.self) private var store
 
     let pair: (game: GameEntry, task: GameTask)
-    let grain: FlowPeriodGrain
+    let dateStyle: FlowRowDateStyle
     var emphasizeUndated: Bool
-    let listIndex: Int
-    let listCount: Int
+    let canMoveUp: Bool
+    let canMoveDown: Bool
     let orderingScope: FlowOrderingScope
     let isLast: Bool
     let onSelect: () -> Void
@@ -154,14 +171,14 @@ private struct FlowTimelineRow: View {
             } label: {
                 Label("Редактировать", systemImage: "pencil")
             }
-            if listIndex > 0 {
+            if canMoveUp {
                 Button {
                     store.flowMoveTaskUp(gameId: pair.game.id, taskId: pair.task.id, scope: orderingScope)
                 } label: {
                     Label("Вверх", systemImage: "arrow.up")
                 }
             }
-            if listIndex < listCount - 1 {
+            if canMoveDown {
                 Button {
                     store.flowMoveTaskDown(gameId: pair.game.id, taskId: pair.task.id, scope: orderingScope)
                 } label: {
@@ -169,7 +186,7 @@ private struct FlowTimelineRow: View {
                 }
             }
             Button {
-                store.toggleTaskDone(gameId: pair.game.id, taskId: pair.task.id)
+                onToggle()
             } label: {
                 Label(pair.task.isDone ? "Открыть снова" : "Выполнено", systemImage: "checkmark.circle")
             }
@@ -183,13 +200,15 @@ private struct FlowTimelineRow: View {
 
     private var subtitleDate: String? {
         guard let d = pair.task.dueDate else { return nil }
-        switch grain {
-        case .day:
+        switch dateStyle {
+        case .hidden:
             return nil
-        case .week:
+        case .weekdayDayMonth:
             return AppDateFormatting.weekdayDayMonth(d)
-        case .month:
-            return AppDateFormatting.dayMonth(d)
+        case .dayMonth:
+            return Calendar.current.isDate(d, equalTo: Date(), toGranularity: .year)
+                ? AppDateFormatting.dayMonth(d)
+                : AppDateFormatting.abbreviated(d)
         }
     }
 }
