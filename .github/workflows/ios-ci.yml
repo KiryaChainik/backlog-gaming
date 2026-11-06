@@ -64,7 +64,8 @@ jobs:
             | sed -E "s|^$GITHUB_WORKSPACE/||; s/^([^:]+):([0-9]+):([0-9]+): (error|warning): (.*)$/::\\4 file=\\1,line=\\2,col=\\3::\\5/" \
             | head -50 || true
           # Итог тестов — notice-аннотацией, чтобы его было видно через API без токена.
-          grep -E "Test run with" xcodebuild.log | tail -1 | sed 's/^/::notice title=Tests::/' || true
+          grep -E "Test run with|Executed [0-9]+ tests?|\*\* TEST (SUCCEEDED|FAILED) \*\*" xcodebuild.log \
+            | sed -E 's/^[^A-Za-z*]*//' | sort -u | sed 's/^/::notice title=Tests::/' || true
 
       - name: Upload logs and results
         if: failure()
