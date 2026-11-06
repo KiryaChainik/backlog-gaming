@@ -18,6 +18,7 @@
 | **Платформы** | Только iPhone / iPad (без macOS / visionOS) |
 | **Сеть** | Нет (полностью локальное приложение) |
 | **Тесты** | Swift Testing, таргет `Backlog_GamingTests` (⌘U): хранилище и миграции, защита данных, лимит «Играю», выборки «Потока». Store в тестах — только через `InMemoryBacklogStorage` |
+| **CI** | GitHub Actions `.github/workflows/ios-ci.yml` (macos-26: build + tests на симуляторе). Статус коммита: `python3 scripts/ci_status.py --wait`. Схема `Backlog_Gaming` — shared (`xcshareddata`) |
 | **DI** | `GameBacklogStore(storage:)` — протокол `GameBacklogStorage` (`UserDefaultsBacklogStorage` / `InMemoryBacklogStorage`); `@Environment` для Store. Превью — только `GameBacklogStore.preview()` |
 | **UI-токены** | `Components/AppTheme.swift` (`UITokens`, `AppTheme`, `GameKanbanColumn.accent/symbolName`); общие `TaskTimelineNode`, `SymbolColorPicker` |
 
