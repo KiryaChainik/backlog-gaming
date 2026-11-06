@@ -5,6 +5,7 @@
 
 import Foundation
 import Observation
+import os
 
 // MARK: - Поток дел
 
@@ -38,6 +39,12 @@ enum GameFlowCalendar {
     }
 }
 
+/// Проблема с хранилищем, о которой нужно сообщить пользователю (показывается алертом в `MainTabView`).
+struct GameBacklogStorageIssue: Identifiable, Equatable, Sendable {
+    let id = UUID()
+    let message: String
+}
+
 /// Секция потока для ручного порядка строк (`flowSortKey` задаётся только задачам из этой секции).
 enum FlowOrderingScope: Sendable {
     case dated(DateInterval)
@@ -52,6 +59,18 @@ final class GameBacklogStore {
     static let maxPlayingGames = 5
 
     private(set) var entries: [GameEntry] = []
+
+    /// Не `nil` — при загрузке что-то пошло не так; UI показывает сообщение один раз.
+    private(set) var storageIssue: GameBacklogStorageIssue?
+
+    /// `false`, если данные прочитаны с потерями и резервную копию сделать не удалось:
+    /// тогда не перезаписываем хранилище, чтобы не уничтожить единственный экземпляр.
+    private var isStorageWritable = true
+
+    private static let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "BacklogGaming",
+        category: "Store"
+    )
 
     init() {
         load()
@@ -399,16 +418,46 @@ final class GameBacklogStore {
         entries = playing + wish + queue + done + dropped
     }
 
+    func dismissStorageIssue() {
+        storageIssue = nil
+    }
+
     private func load() {
         guard let data = UserDefaults.standard.data(forKey: GameBacklogPersistence.storageKey) else {
             entries = []
             return
         }
-        entries = GameBacklogPersistence.decodeEntries(from: data)
+
+        // Снимок при каждом запуске (если данные изменились) — точка восстановления на любой случай.
+        GameBacklogPersistence.writeBackup(data, kind: .launch)
+
+        let result = GameBacklogPersistence.decodeEntries(from: data)
+        entries = result.entries
         normalizeOrder()
+
+        guard result.hasIssues else { return }
+
+        for issue in result.issues {
+            Self.logger.error("Decode issue: \(issue, privacy: .public)")
+        }
+
+        if let backupURL = GameBacklogPersistence.writeBackup(data, kind: .recovery) {
+            storageIssue = GameBacklogStorageIssue(
+                message: "Часть сохранённых данных не удалось прочитать. Исходная копия сохранена в приложении «Файлы» → папка этого приложения → Backups → \(backupURL.lastPathComponent)."
+            )
+        } else {
+            isStorageWritable = false
+            storageIssue = GameBacklogStorageIssue(
+                message: "Не удалось полностью прочитать сохранённые данные и сделать их резервную копию. Чтобы ничего не потерять, изменения в этом запуске сохраняться не будут."
+            )
+        }
     }
 
     private func save() {
+        guard isStorageWritable else {
+            Self.logger.warning("Save skipped: storage is read-only after a failed load + backup")
+            return
+        }
         guard let data = GameBacklogPersistence.encodeEntries(entries) else { return }
         UserDefaults.standard.set(data, forKey: GameBacklogPersistence.storageKey)
     }

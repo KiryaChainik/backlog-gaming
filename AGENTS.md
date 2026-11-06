@@ -14,7 +14,8 @@
 | **UI** | SwiftUI; UIKit только через `UIViewControllerRepresentable` |
 | **Архитектура** | MVVM. View → `@Observable` ViewModel/Store → сервисы через протоколы |
 | **Навигация** | `NavigationStack` + `NavigationPath` на фичу |
-| **Хранение** | JSON в `UserDefaults` через `GameBacklogStore` / `GameBacklogPersistence` (версионированный `FileEnvelope`) |
+| **Хранение** | JSON в `UserDefaults` через `GameBacklogStore` / `GameBacklogPersistence` (версионированный `FileEnvelope`). Декодирование терпимое (`decodeTolerant`, `LossyDecodableArray`); снимки в `Documents/Backups` при запуске и при ошибке чтения |
+| **Платформы** | Только iPhone / iPad (без macOS / visionOS) |
 | **Сеть** | Нет (полностью локальное приложение) |
 | **Тесты** | Пока нет; при появлении — XCTest, правило `ios-testing.mdc` вернётся |
 | **DI** | Протоколы + инициализатор; `@Environment` для Store |

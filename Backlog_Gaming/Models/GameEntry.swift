@@ -139,25 +139,27 @@ struct GameEntry: Identifiable, Codable, Equatable, Sendable {
         id = try c.decode(UUID.self, forKey: .id)
         title = try c.decode(String.self, forKey: .title)
 
-        if let st = try c.decodeIfPresent(GameStatus.self, forKey: .status) {
+        // `id` и `title` обязательны: без них запись пропускается целиком (см. `LossyDecodableArray`).
+        // Остальные поля читаются терпимо — битое значение заменяется дефолтом и регистрируется.
+        if let st = c.decodeTolerant(GameStatus.self, forKey: .status, decoder: decoder) {
             status = st
-        } else if let legacy = try c.decodeIfPresent(Bool.self, forKey: .isCompleted) {
+        } else if let legacy = c.decodeTolerant(Bool.self, forKey: .isCompleted, decoder: decoder) {
             status = legacy ? .completed : .queued
         } else {
             status = .queued
         }
 
-        note = try c.decodeIfPresent(String.self, forKey: .note) ?? ""
-        platform = try c.decodeIfPresent(GamePlatform.self, forKey: .platform) ?? .unspecified
-        wishlist = try c.decodeIfPresent(Bool.self, forKey: .wishlist) ?? false
-        completedAt = try c.decodeIfPresent(Date.self, forKey: .completedAt)
-        if let s = try c.decodeIfPresent(String.self, forKey: .symbolName), !s.isEmpty {
+        note = c.decodeTolerant(String.self, forKey: .note, decoder: decoder) ?? ""
+        platform = c.decodeTolerant(GamePlatform.self, forKey: .platform, decoder: decoder) ?? .unspecified
+        wishlist = c.decodeTolerant(Bool.self, forKey: .wishlist, decoder: decoder) ?? false
+        completedAt = c.decodeTolerant(Date.self, forKey: .completedAt, decoder: decoder)
+        if let s = c.decodeTolerant(String.self, forKey: .symbolName, decoder: decoder), !s.isEmpty {
             symbolName = s
         } else {
             symbolName = Self.defaultSymbol
         }
-        accentIndex = try c.decodeIfPresent(Int.self, forKey: .accentIndex) ?? 0
-        tasks = try c.decodeIfPresent([GameTask].self, forKey: .tasks) ?? []
+        accentIndex = c.decodeTolerant(Int.self, forKey: .accentIndex, decoder: decoder) ?? 0
+        tasks = c.decodeTolerant(LossyDecodableArray<GameTask>.self, forKey: .tasks, decoder: decoder)?.elements ?? []
 
         if status != .queued { wishlist = false }
         if status != .completed { completedAt = nil }

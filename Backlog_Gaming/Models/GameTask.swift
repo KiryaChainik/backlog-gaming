@@ -73,18 +73,24 @@ struct GameTask: Identifiable, Codable, Equatable, Sendable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(UUID.self, forKey: .id)
         title = try c.decode(String.self, forKey: .title)
-        kind = try c.decode(GameTaskKind.self, forKey: .kind)
-        isDone = try c.decode(Bool.self, forKey: .isDone)
-        dueDate = try c.decodeIfPresent(Date.self, forKey: .dueDate)
-        includesTime = try c.decodeIfPresent(Bool.self, forKey: .includesTime) ?? false
-        if let s = try c.decodeIfPresent(String.self, forKey: .symbolName), !s.isEmpty {
+        // `id` и `title` обязательны; остальное — терпимо, с дефолтами (проблемы регистрируются).
+        if let k = c.decodeTolerant(GameTaskKind.self, forKey: .kind, decoder: decoder) {
+            kind = k
+        } else {
+            decoder.reportBacklogDecodeIssue("GameTask.kind missing, defaulted to todo")
+            kind = .todo
+        }
+        isDone = c.decodeTolerant(Bool.self, forKey: .isDone, decoder: decoder) ?? false
+        dueDate = c.decodeTolerant(Date.self, forKey: .dueDate, decoder: decoder)
+        includesTime = c.decodeTolerant(Bool.self, forKey: .includesTime, decoder: decoder) ?? false
+        if let s = c.decodeTolerant(String.self, forKey: .symbolName, decoder: decoder), !s.isEmpty {
             symbolName = s
         } else {
             symbolName = Self.defaultSymbol(for: kind)
         }
-        accentIndex = try c.decodeIfPresent(Int.self, forKey: .accentIndex) ?? 0
-        flowSortKey = try c.decodeIfPresent(Int.self, forKey: .flowSortKey) ?? 0
-        note = try c.decodeIfPresent(String.self, forKey: .note) ?? ""
+        accentIndex = c.decodeTolerant(Int.self, forKey: .accentIndex, decoder: decoder) ?? 0
+        flowSortKey = c.decodeTolerant(Int.self, forKey: .flowSortKey, decoder: decoder) ?? 0
+        note = c.decodeTolerant(String.self, forKey: .note, decoder: decoder) ?? ""
     }
 
     nonisolated func encode(to encoder: Encoder) throws {

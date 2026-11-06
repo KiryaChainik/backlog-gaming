@@ -44,6 +44,18 @@ struct MainTabView: View {
                 addButton
             }
         }
+        .alert(
+            "Проблема с данными",
+            isPresented: Binding(
+                get: { store.storageIssue != nil },
+                set: { if !$0 { store.dismissStorageIssue() } }
+            ),
+            presenting: store.storageIssue
+        ) { _ in
+            Button("Понятно", role: .cancel) { store.dismissStorageIssue() }
+        } message: { issue in
+            Text(issue.message)
+        }
     }
 
     private var addButton: some View {
