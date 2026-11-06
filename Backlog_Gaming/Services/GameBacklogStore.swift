@@ -90,7 +90,12 @@ final class GameBacklogStore {
         category: "Store"
     )
 
-    init() {
+    private let storage: any GameBacklogStorage
+
+    /// По умолчанию — настоящие данные (`UserDefaults`); для превью и тестов — `InMemoryBacklogStorage`.
+    /// Хранилище по умолчанию создаётся внутри `init`, а не в default-аргументе: тот вычисляется вне MainActor.
+    init(storage: (any GameBacklogStorage)? = nil) {
+        self.storage = storage ?? UserDefaultsBacklogStorage()
         load()
     }
 
@@ -405,13 +410,13 @@ final class GameBacklogStore {
     }
 
     private func load() {
-        guard let data = UserDefaults.standard.data(forKey: GameBacklogPersistence.storageKey) else {
+        guard let data = storage.loadData() else {
             entries = []
             return
         }
 
         // Снимок при каждом запуске (если данные изменились) — точка восстановления на любой случай.
-        GameBacklogPersistence.writeBackup(data, kind: .launch)
+        _ = storage.writeBackup(data, kind: .launch)
 
         let result = GameBacklogPersistence.decodeEntries(from: data)
         entries = result.entries
@@ -423,7 +428,7 @@ final class GameBacklogStore {
             Self.logger.error("Decode issue: \(issue, privacy: .public)")
         }
 
-        if let backupURL = GameBacklogPersistence.writeBackup(data, kind: .recovery) {
+        if let backupURL = storage.writeBackup(data, kind: .recovery) {
             storageIssue = GameBacklogStorageIssue(
                 message: "Часть сохранённых данных не удалось прочитать. Исходная копия сохранена в приложении «Файлы» → папка этого приложения → Backups → \(backupURL.lastPathComponent)."
             )
@@ -441,7 +446,7 @@ final class GameBacklogStore {
             return
         }
         guard let data = GameBacklogPersistence.encodeEntries(entries) else { return }
-        UserDefaults.standard.set(data, forKey: GameBacklogPersistence.storageKey)
+        storage.saveData(data)
     }
 }
 

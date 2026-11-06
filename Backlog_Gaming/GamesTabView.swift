@@ -169,7 +169,7 @@ struct GamesTabView: View {
                 .font(.title2.weight(.semibold))
                 .foregroundStyle(.white)
                 .frame(width: 54, height: 54)
-                .background(Circle().fill(columnAccent(.playing)))
+                .background(Circle().fill(AppTheme.accent))
                 .shadow(color: .black.opacity(0.18), radius: 8, y: 4)
         }
         .accessibilityLabel("Добавить игру")
@@ -230,7 +230,7 @@ struct GamesTabView: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .strokeBorder(
-                        highlighted ? columnAccent(column) : columnAccent(column).opacity(0.15),
+                        highlighted ? column.accent : column.accent.opacity(0.15),
                         lineWidth: highlighted ? 2.5 : 1
                     )
             )
@@ -251,9 +251,9 @@ struct GamesTabView: View {
 
     private func kanbanColumnHeader(column: GameKanbanColumn, count: Int) -> some View {
         HStack {
-            Image(systemName: kanbanColumnIcon(column))
+            Image(systemName: column.symbolName)
                 .font(.title3.weight(.semibold))
-                .foregroundStyle(columnAccent(column).opacity(0.82))
+                .foregroundStyle(column.accent.opacity(0.82))
                 .frame(width: 22)
             Text(column.title)
                 .font(.title2.weight(.bold))
@@ -317,7 +317,7 @@ struct GamesTabView: View {
                                     if isWishlist {
                                         // Тот же значок и цвет, что у «Вишлиста» в статистике.
                                         Label("Вишлист", systemImage: "star.fill")
-                                            .foregroundStyle(.orange)
+                                            .foregroundStyle(AppTheme.wishlist)
                                     }
                                 }
                                 .font(.caption)
@@ -417,41 +417,18 @@ struct GamesTabView: View {
         .padding(.vertical, 4)
     }
 
-    private let taskNodeSize: CGFloat = 26
-    private let taskStemWidth: CGFloat = 3
-
     @ViewBuilder
     private func gameTaskRow(game: GameEntry, task: GameTask, isLast: Bool) -> some View {
         let color = GameTaskVisual.accentColor(at: task.accentIndex)
         let taskIndex = game.tasks.firstIndex(where: { $0.id == task.id })
 
         HStack(alignment: .top, spacing: 10) {
-            ZStack(alignment: .top) {
-                if !isLast {
-                    VStack(spacing: 0) {
-                        Color.clear.frame(height: taskNodeSize * 0.5 + 6)
-                        Rectangle()
-                            .fill(color.opacity(0.35))
-                            .frame(width: taskStemWidth)
-                            .frame(maxHeight: .infinity)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                }
-                VStack { Spacer() }
-                    .frame(width: taskStemWidth)
-                    .background(color.opacity(0.35))
-                    .frame(height: 14)
-                    .offset(y: -12)
-                Circle()
-                    .fill(color.opacity(task.isDone ? 0.45 : 0.92))
-                    .frame(width: taskNodeSize, height: taskNodeSize)
-                    .overlay {
-                        Image(systemName: task.displaySymbolName)
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(.white)
-                    }
-            }
-            .frame(width: 32)
+            TaskTimelineNode(
+                symbolName: task.displaySymbolName,
+                color: color,
+                isDone: task.isDone,
+                isLast: isLast
+            )
 
             Button {
                 taskSheet = TaskSheetPayload(gameId: game.id, taskId: task.id)
@@ -548,24 +525,6 @@ struct GamesTabView: View {
         quickAddByGame[gameId] = ""
     }
 
-    private func columnAccent(_ column: GameKanbanColumn) -> Color {
-        switch column {
-        case .playing: Color(red: 0.38, green: 0.66, blue: 0.84)
-        case .backlog: Color(red: 0.72, green: 0.52, blue: 0.78)
-        case .completed: Color(red: 0.47, green: 0.73, blue: 0.53)
-        case .dropped: Color(red: 0.63, green: 0.65, blue: 0.70)
-        }
-    }
-
-    private func kanbanColumnIcon(_ column: GameKanbanColumn) -> String {
-        switch column {
-        case .playing: "play.circle.fill"
-        case .backlog: "clock.circle.fill"
-        case .completed: "checkmark.circle.fill"
-        case .dropped: "xmark.circle.fill"
-        }
-    }
-
     // MARK: - Add game sheet
 
     private var addGameSheet: some View {
@@ -586,47 +545,7 @@ struct GamesTabView: View {
                 }
 
                 Section("Иконка и цвет") {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 44), spacing: 8)], spacing: 8) {
-                        ForEach(GameTaskVisual.editorGameSymbols, id: \.self) { sym in
-                            Button {
-                                newSymbolName = sym
-                            } label: {
-                                Image(systemName: sym)
-                                    .font(.title3)
-                                    .foregroundStyle(sym == newSymbolName ? Color.white : Color.primary)
-                                    .frame(width: 44, height: 44)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                            .fill(sym == newSymbolName
-                                                ? GameTaskVisual.accentColor(at: newAccentIndex)
-                                                : Color.secondary.opacity(0.12))
-                                    )
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 12) {
-                            ForEach(0 ..< GameTaskVisual.accentCount, id: \.self) { i in
-                                Button {
-                                    newAccentIndex = i
-                                } label: {
-                                    Circle()
-                                        .fill(GameTaskVisual.accentColor(at: i))
-                                        .frame(width: 30, height: 30)
-                                        .overlay {
-                                            if newAccentIndex == i {
-                                                Circle().strokeBorder(Color.primary, lineWidth: 2)
-                                            }
-                                        }
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                        .padding(.horizontal, 2)
-                        .padding(.vertical, 2)
-                    }
+                    SymbolColorPicker(symbols: GameTaskVisual.editorGameSymbols, symbol: $newSymbolName, accentIndex: $newAccentIndex)
                 }
             }
             .navigationTitle("Новая игра")
@@ -661,6 +580,6 @@ enum BacklogRoute: Hashable {
     @Previewable @State var showAdd = false
     NavigationStack(path: $path) {
         GamesTabView(path: $path, showAddSheet: $showAdd)
-            .environment(GameBacklogStore())
+            .environment(GameBacklogStore.preview())
     }
 }

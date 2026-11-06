@@ -81,47 +81,11 @@ struct GameDetailView: View {
             }
 
             Section("Иконка и цвет") {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 44), spacing: 8)], spacing: 8) {
-                    ForEach(GameTaskVisual.editorGameSymbols, id: \.self) { sym in
-                        Button {
-                            draft.symbolName = sym
-                        } label: {
-                            Image(systemName: sym)
-                                .font(.title3)
-                                .foregroundStyle(sym == draft.displaySymbolName ? Color.white : Color.primary)
-                                .frame(width: 44, height: 44)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                        .fill(sym == draft.displaySymbolName
-                                            ? GameTaskVisual.accentColor(at: draft.accentIndex)
-                                            : Color.secondary.opacity(0.12))
-                                )
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(0 ..< GameTaskVisual.accentCount, id: \.self) { i in
-                            Button {
-                                draft.accentIndex = i
-                            } label: {
-                                Circle()
-                                    .fill(GameTaskVisual.accentColor(at: i))
-                                    .frame(width: 30, height: 30)
-                                    .overlay {
-                                        if draft.accentIndex == i {
-                                            Circle().strokeBorder(Color.primary, lineWidth: 2)
-                                        }
-                                    }
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(.horizontal, 2)
-                    .padding(.vertical, 2)
-                }
+                SymbolColorPicker(
+                    symbols: GameTaskVisual.editorGameSymbols,
+                    symbol: Binding(get: { draft.displaySymbolName }, set: { draft.symbolName = $0 }),
+                    accentIndex: $draft.accentIndex
+                )
             }
 
             Section("Заметка") {
@@ -263,6 +227,6 @@ struct GameDetailView: View {
         GameDetailView(
             entry: GameEntry(title: "Outer Wilds", status: .playing, platform: .pc)
         )
-        .environment(GameBacklogStore())
+        .environment(GameBacklogStore.preview())
     }
 }

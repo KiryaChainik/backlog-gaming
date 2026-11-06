@@ -18,7 +18,8 @@
 | **Платформы** | Только iPhone / iPad (без macOS / visionOS) |
 | **Сеть** | Нет (полностью локальное приложение) |
 | **Тесты** | Пока нет; при появлении — XCTest, правило `ios-testing.mdc` вернётся |
-| **DI** | Протоколы + инициализатор; `@Environment` для Store |
+| **DI** | `GameBacklogStore(storage:)` — протокол `GameBacklogStorage` (`UserDefaultsBacklogStorage` / `InMemoryBacklogStorage`); `@Environment` для Store. Превью — только `GameBacklogStore.preview()` |
+| **UI-токены** | `Components/AppTheme.swift` (`UITokens`, `AppTheme`, `GameKanbanColumn.accent/symbolName`); общие `TaskTimelineNode`, `SymbolColorPicker` |
 
 **Не смешивать** с TCA, VIPER, Clean без отдельной постановки.
 

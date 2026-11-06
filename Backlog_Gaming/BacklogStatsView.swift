@@ -12,11 +12,12 @@ struct BacklogStatsView: View {
         let s = store.counts()
         List {
             Section("По статусам") {
-                statRow(title: GameListSection.playing.header, value: s.playing, symbol: "gamecontroller.fill", color: .blue)
-                statRow(title: GameListSection.wishlist.header, value: s.wishlist, symbol: "star.fill", color: .orange)
-                statRow(title: GameListSection.queue.header, value: s.queue, symbol: "tray.full.fill", color: .purple)
-                statRow(title: GameListSection.completed.header, value: s.completed, symbol: "checkmark.circle.fill", color: .green)
-                statRow(title: GameListSection.dropped.header, value: s.dropped, symbol: "xmark.circle.fill", color: .secondary)
+                // Те же значки и цвета, что у колонок канбана; вишлист — как бейдж на карточке.
+                statRow(title: GameListSection.playing.header, value: s.playing, symbol: GameKanbanColumn.playing.symbolName, color: GameKanbanColumn.playing.accent)
+                statRow(title: GameListSection.wishlist.header, value: s.wishlist, symbol: "star.fill", color: AppTheme.wishlist)
+                statRow(title: GameListSection.queue.header, value: s.queue, symbol: GameKanbanColumn.backlog.symbolName, color: GameKanbanColumn.backlog.accent)
+                statRow(title: GameListSection.completed.header, value: s.completed, symbol: GameKanbanColumn.completed.symbolName, color: GameKanbanColumn.completed.accent)
+                statRow(title: GameListSection.dropped.header, value: s.dropped, symbol: GameKanbanColumn.dropped.symbolName, color: GameKanbanColumn.dropped.accent)
             }
             Section("Всего записей") {
                 LabeledContent("Игр в списке", value: "\(s.total)")
@@ -41,6 +42,6 @@ struct BacklogStatsView: View {
 #Preview {
     NavigationStack {
         BacklogStatsView()
-            .environment(GameBacklogStore())
+            .environment(GameBacklogStore.preview())
     }
 }

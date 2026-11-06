@@ -21,5 +21,5 @@ struct Backlog_GamingApp: App {
 
 #Preview("Backlog Gaming") {
     MainTabView()
-        .environment(GameBacklogStore())
+        .environment(GameBacklogStore.preview())
 }

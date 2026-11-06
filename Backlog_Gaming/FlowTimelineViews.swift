@@ -66,9 +66,6 @@ private struct FlowTimelineRow: View {
     let onSelect: () -> Void
     let onToggle: () -> Void
 
-    private let nodeSize: CGFloat = 26
-    private let stemWidth: CGFloat = 3
-
     private var taskColor: Color {
         GameTaskVisual.accentColor(at: pair.task.accentIndex)
     }
@@ -76,34 +73,12 @@ private struct FlowTimelineRow: View {
     var body: some View {
         // Same leading layout as `gameTaskRow` in GamesTabView: timeline column first, no extra time gutter.
         HStack(alignment: .top, spacing: 10) {
-            ZStack(alignment: .top) {
-                if !isLast {
-                    VStack(spacing: 0) {
-                        Color.clear.frame(height: nodeSize * 0.5 + 6)
-                        Rectangle()
-                            .fill(taskColor.opacity(0.35))
-                            .frame(width: stemWidth)
-                            .frame(maxHeight: .infinity)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                }
-                // Upper stem: between rows, or “tail” from section top when this is the first (or only) row.
-                VStack { Spacer() }
-                    .frame(width: stemWidth)
-                    .background(taskColor.opacity(0.35))
-                    .frame(height: 14)
-                    .offset(y: -12)
-                Circle()
-                    .fill(taskColor.opacity(pair.task.isDone ? 0.45 : 0.92))
-                    .frame(width: nodeSize, height: nodeSize)
-                    .overlay {
-                        Image(systemName: pair.task.displaySymbolName)
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(.white)
-                    }
-                    .accessibilityHidden(true)
-            }
-            .frame(width: 32)
+            TaskTimelineNode(
+                symbolName: pair.task.displaySymbolName,
+                color: taskColor,
+                isDone: pair.task.isDone,
+                isLast: isLast
+            )
 
             Button(action: onSelect) {
                 VStack(alignment: .leading, spacing: 2) {

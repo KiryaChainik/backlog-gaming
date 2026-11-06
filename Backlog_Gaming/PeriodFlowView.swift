@@ -306,5 +306,5 @@ struct PeriodFlowView: View {
 
 #Preview {
     PeriodFlowView()
-        .environment(GameBacklogStore())
+        .environment(GameBacklogStore.preview())
 }

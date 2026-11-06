@@ -10,7 +10,6 @@ struct MainTabView: View {
     @State private var gamesPath = NavigationPath()
     @State private var isAddingGame = false
     @State private var selectedTab = 0
-    private let playingAccent = Color(red: 0.38, green: 0.66, blue: 0.84)
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -38,7 +37,7 @@ struct MainTabView: View {
             }
             .tag(2)
         }
-        .tint(playingAccent)
+        .tint(AppTheme.accent)
         .alert(
             "Проблема с данными",
             isPresented: Binding(
@@ -68,5 +67,5 @@ struct SettingsPlaceholderView: View {
 
 #Preview {
     MainTabView()
-        .environment(GameBacklogStore())
+        .environment(GameBacklogStore.preview())
 }
